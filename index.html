@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학생 주문 및 조회 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .input-field { border-radius: 8px; padding: 10px; border: 1px solid #d1d5db; width: 100%; transition: border-color 0.3s; }
+        .input-field:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+        .btn-primary { background-color: #10b981; color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; transition: background-color 0.3s, transform 0.1s; width: 100%; }
+        .btn-primary:hover { background-color: #059669; }
+        .btn-primary:active { transform: scale(0.99); }
+        .label { font-weight: 600; color: #374151; margin-bottom: 4px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
+    <header class="w-full max-w-4xl text-center py-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">학생 주문 시스템</h1>
+        <p id="auth-info" class="mt-2 text-sm text-gray-500">
+            인증 중...
+        </p>
+    </header>
+
+    <main class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- 주문 정보 입력 섹션 -->
+        <section class="card p-6 lg:p-8">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700 border-b pb-3">나의 주문 정보 입력</h2>
+            <div id="submission-message" class="hidden p-4 mb-4 rounded-lg text-sm" role="alert"></div>
+
+            <form id="orderForm">
+                <div class="space-y-4">
+                    <!-- 이름 -->
+                    <div>
+                        <label for="name" class="label">1. 이름 <span class="text-red-500">*</span></label>
+                        <input type="text" id="name" class="input-field" placeholder="홍길동" required>
+                    </div>
+                    <!-- 학번 -->
+                    <div>
+                        <label for="studentId" class="label">2. 학번 <span class="text-red-500">*</span></label>
+                        <input type="text" id="studentId" class="input-field" placeholder="10101 (5자리 숫자)" required pattern="\d{5}" title="학번은 5자리 숫자여야 합니다.">
+                    </div>
+                    <!-- 몇 조인지 -->
+                    <div>
+                        <label for="groupNumber" class="label">3. 조 (1조,2조,3조,4조) <span class="text-red-500">*</span></label>
+                        <input type="text" id="groupNumber" class="input-field" placeholder="예: 1조" required>
+                    </div>
+                    
+                    <!-- 기타 요청 사항 (제거됨) -->
+
+                    <!-- 사이즈 (4번으로 변경) -->
+                    <div>
+                        <label class="label">4. 사이즈 <span class="text-red-500">*</span></label>
+                        <select id="size" class="input-field" required>
+                            <option value="">선택하세요</option>
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="2XL">2XL</option>
+                        </select>
+                    </div>
+                    <!-- 뒷면 번호판 문구 (5번으로 변경) -->
+                    <div>
+                        <label for="backText" class="label">5. 뒷면 번호판 문구 (선택 사항)</label>
+                        <input type="text" id="backText" class="input-field" maxlength="20" placeholder="예: Class of 2025 (최대 20자)">
+                    </div>
+
+                    <button type="submit" class="btn-primary mt-6">주문 제출하기</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 나의 주문 현황 섹션 -->
+        <section class="card p-6 lg:p-8">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700 border-b pb-3">나의 주문 현황 확인</h2>
+            
+            <div id="lookup-message" class="hidden p-4 mb-4 rounded-lg text-sm" role="alert"></div>
+
+            <div class="space-y-4 mb-6">
+                <!-- 이름 (조회용) -->
+                <div>
+                    <label for="lookupName" class="label">이름</label>
+                    <input type="text" id="lookupName" class="input-field" placeholder="이름을 입력하세요">
+                </div>
+                <!-- 학번 (조회용) -->
+                <div>
+                    <label for="lookupStudentId" class="label">학번</label>
+                    <input type="text" id="lookupStudentId" class="input-field" placeholder="학번을 입력하세요">
+                </div>
+                
+                <button id="lookupButton" class="btn-primary !bg-blue-600 hover:!bg-blue-700" onclick="lookupOrder()">주문 현황 조회하기</button>
+            </div>
+
+            <!-- 주문 현황 표시 영역 -->
+            <div>
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">조회 결과</h3>
+                <div id="orderStatusDisplay" class="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                    <p class="text-gray-500">이름과 학번을 입력하고 '조회하기' 버튼을 누르세요.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script type="module">
+    // Firebase Imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, Timestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Set Firestore log level for debugging
+    setLogLevel('Debug');
+    
+    // --- Global Configuration Variables (MUST USE) ---
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    let app;
+    let db;
+    let auth;
+    let userId = null;
+
+    // --- Utility Functions ---
+
+    /**
+     * Shows a colored message in the specified display area.
+     * @param {HTMLElement} element - The element to display the message in.
+     * @param {string} message - The message text.
+     * @param {string} type - 'success', 'error', or 'info'.
+     */
+    function showMessage(element, message, type) {
+        element.textContent = message;
+        element.className = 'p-4 mb-4 rounded-lg text-sm';
+        element.classList.remove('hidden');
+
+        if (type === 'success') {
+            element.classList.add('bg-green-100', 'text-green-800');
+        } else if (type === 'error') {
+            element.classList.add('bg-red-100', 'text-red-800');
+        } else {
+            element.classList.add('bg-blue-100', 'text-blue-800');
+        }
+
+        setTimeout(() => {
+            element.classList.add('hidden');
+        }, 5000);
+    }
+
+    // --- Firebase Initialization and Auth ---
+    async function initFirebase() {
+        if (!firebaseConfig) {
+            console.error("Firebase configuration is missing.");
+            document.getElementById('auth-info').textContent = "오류: Firebase 설정이 누락되었습니다.";
+            return;
+        }
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            // Authentication logic using the provided token or anonymous sign-in
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('auth-info').innerHTML = `로그인됨 (User ID: <span class="font-mono text-xs text-blue-600">${userId}</span>).`;
+                    console.log("Firebase initialized and user authenticated:", userId);
+                } else {
+                    // Fallback or anonymous user handling
+                    userId = crypto.randomUUID(); // Use a random ID if anonymous sign-in failed
+                    document.getElementById('auth-info').innerHTML = `익명 사용자 (ID: <span class="font-mono text-xs text-yellow-600">${userId}</span>).`;
+                    console.log("Firebase initialized, currently anonymous/unauthenticated:", userId);
+                }
+            });
+
+        } catch (error) {
+            console.error("Firebase initialization or sign-in failed:", error);
+            document.getElementById('auth-info').textContent = `오류: 초기화 실패 - ${error.message}`;
+        }
+    }
+
+    // --- Order Submission Logic ---
+
+    /**
+     * Submits the order form data to Firestore.
+     * @param {Event} e - The form submission event.
+     */
+    async function submitOrder(e) {
+        e.preventDefault();
+
+        if (!db || !userId) {
+            showMessage(document.getElementById('submission-message'), '데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.', 'error');
+            return;
+        }
+        
+        const form = e.target;
+        const name = form.elements['name'].value.trim();
+        const studentId = form.elements['studentId'].value.trim();
+        // 주문 상품명 대신 '몇 조인지' (groupNumber) 추출
+        const groupNumber = form.elements['groupNumber'].value.trim();
+        // 기타 요청 사항 항목 제거됨
+        const size = form.elements['size'].value;
+        const backText = form.elements['backText'].value.trim();
+        
+        // 필수 항목 검사: 이름, 학번, 조 번호, 사이즈
+        if (!name || !studentId || !groupNumber || !size) {
+            showMessage(document.getElementById('submission-message'), '이름, 학번, 조, 사이즈는 필수 입력 항목입니다.', 'error');
+            return;
+        }
+
+        // Firestore collection path for public data
+        const collectionPath = `/artifacts/${appId}/public/data/student_orders`;
+
+        const orderData = {
+            name,
+            studentId,
+            groupNumber, // 새로운 필드: 조 이름
+            // customNotes 필드 제거됨
+            size,
+            backText: backText || '문구 없음',
+            createdAt: Timestamp.now(),
+            submittedBy: userId,
+        };
+
+        try {
+            // First, check if an order already exists for this studentId
+            const checkQuery = query(
+                collection(db, collectionPath),
+                where('studentId', '==', studentId)
+            );
+            const existingDocs = await getDocs(checkQuery);
+
+            if (existingDocs.size > 0) {
+                // If exists, update the first document found (assuming one order per student ID)
+                const docRefToUpdate = existingDocs.docs[0].ref;
+                await updateDoc(docRefToUpdate, orderData);
+                showMessage(document.getElementById('submission-message'), 
+                    '기존 주문 정보가 확인되어, 새로운 내용으로 **수정**되었습니다!', 
+                    'success'
+                );
+            } else {
+                // If not exists, add a new document
+                await addDoc(collection(db, collectionPath), orderData);
+                showMessage(document.getElementById('submission-message'), 
+                    '주문 정보가 성공적으로 제출되었습니다!', 
+                    'success'
+                );
+            }
+            
+            // 폼 필드 초기화
+            form.elements['name'].value = '';
+            form.elements['studentId'].value = '';
+            form.elements['groupNumber'].value = ''; 
+            form.elements['size'].value = '';
+            form.elements['backText'].value = '';
+            
+        } catch (e) {
+            console.error("주문 정보 제출 실패:", e);
+            showMessage(document.getElementById('submission-message'), `주문 제출 중 오류 발생: ${e.message}`, 'error');
+        }
+    }
+
+    // --- Order Lookup Logic ---
+
+    /**
+     * Looks up the order details based on name and student ID.
+     */
+    window.lookupOrder = async function() {
+        if (!db || !userId) {
+            showMessage(document.getElementById('lookup-message'), '데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.', 'error');
+            return;
+        }
+        
+        const lookupName = document.getElementById('lookupName').value.trim();
+        const lookupStudentId = document.getElementById('lookupStudentId').value.trim();
+        const displayArea = document.getElementById('orderStatusDisplay');
+        
+        displayArea.innerHTML = `<p class="text-gray-500">조회 중...</p>`;
+        document.getElementById('lookup-message').classList.add('hidden');
+
+        if (!lookupName || !lookupStudentId) {
+            displayArea.innerHTML = `<p class="text-red-500 font-semibold">이름과 학번을 모두 입력해야 조회할 수 있습니다.</p>`;
+            return;
+        }
+
+        // Firestore collection path
+        const collectionPath = `/artifacts/${appId}/public/data/student_orders`;
+        
+        try {
+            // Query for orders matching both name and studentId
+            const q = query(
+                collection(db, collectionPath),
+                where('name', '==', lookupName),
+                where('studentId', '==', lookupStudentId)
+            );
+
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                displayArea.innerHTML = `<p class="text-gray-500">일치하는 주문 정보를 찾을 수 없습니다. 이름과 학번을 다시 확인해 주세요.</p>`;
+                showMessage(document.getElementById('lookup-message'), '주문 정보를 찾을 수 없습니다.', 'info');
+                return;
+            }
+
+            // Display results
+            let htmlContent = `<div class="space-y-6">`;
+            
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const timestamp = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 정보 없음';
+
+                // 데이터 조회 시, groupNumber가 없으면 '정보 없음'으로 표시 (이전 데이터와의 호환성 처리)
+                const groupDisplay = data.groupNumber || '정보 없음 (이전 양식)';
+                // customNotes 필드 제거됨
+
+                htmlContent += `
+                    <div class="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                        <p class="text-sm font-bold text-blue-700 mb-2">주문 ID: ${docSnap.id}</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="font-medium text-gray-700">이름:</div><div>${data.name}</div>
+                            <div class="font-medium text-gray-700">학번:</div><div>${data.studentId}</div>
+                            <!-- 조 이름 표시 (상품명 대체) -->
+                            <div class="font-medium text-gray-700">조 이름:</div><div>${groupDisplay}</div>
+                            <!-- 사이즈는 필수 항목 -->
+                            <div class="font-medium text-gray-700">사이즈:</div><div class="font-bold text-lg text-blue-800">${data.size || '정보 없음'}</div>
+                            
+                            <div class="font-medium text-gray-700 col-span-2 border-t mt-2 pt-2">뒷면 문구:</div><div class="col-span-2">${data.backText || '문구 없음'}</div>
+                            
+                            <!-- 기타 요청 사항 표시 (제거됨) -->
+
+                            <div class="font-medium text-gray-700 col-span-2 border-t mt-2 pt-2">제출 시간:</div><div class="col-span-2 text-xs text-gray-500">${timestamp}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            htmlContent += `</div>`;
+            displayArea.innerHTML = htmlContent;
+            showMessage(document.getElementById('lookup-message'), '주문 정보를 성공적으로 조회했습니다.', 'success');
+
+        } catch (e) {
+            console.error("주문 조회 실패:", e);
+            displayArea.innerHTML = `<p class="text-red-500 font-semibold">조회 중 오류가 발생했습니다: ${e.message}</p>`;
+            showMessage(document.getElementById('lookup-message'), '데이터 조회 중 오류 발생.', 'error');
+        }
+    }
+    
+    // --- Event Listeners ---
+    
+    // Attach submitOrder function to the form submission
+    document.addEventListener('DOMContentLoaded', () => {
+        initFirebase();
+        document.getElementById('orderForm').addEventListener('submit', submitOrder);
+    });
+
+</script>
+</body>
+</html>
